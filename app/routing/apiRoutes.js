@@ -1,62 +1,78 @@
-// ===============================================================================
 // LOAD DATA
-// We are linking our routes to a series of "data" sources.
-// These data sources hold arrays of information on table-data, waitinglist, etc.
-// ===============================================================================
+// =============================================================================
+var userData = require("../data/friends");
 
-var tableData = require("../data/tableData");
-//var waitListData = require("../data/waitinglistData");
-
-
-// ===============================================================================
 // ROUTING
 // ===============================================================================
 
 module.exports = function (app) {
-    // API GET Requests
-    // Below code handles when users "visit" a page.
-    // In each of the below cases when a user visits a link
-    // (ex: localhost:PORT/api/admin... they are shown a JSON of the data in the table)
-    // ---------------------------------------------------------------------------
-
-    app.get("/api/tables", function (req, res) {
-        res.json(tableData);
+    app.get("/api/friends", function (req, res) {
+        console.log("Getting Friends from API...");
+        res.json(friends);
     });
 
-    app.get("/api/waitlist", function (req, res) {
-        res.json(waitListData);
-    });
+    var comparisonUserTotalScore = 0;
+    var friendsScores = [];
+    ////////////////////not connecting//////////////////////
+    // *** Updates an array of friends "database" array and sends back the json form of the most compatible new friend
+    app.post('/api/friends', function (req, res) {
+        // newFriend is the user that filled out the survey
+        var currentUserScores = req.body.scores;
+        console.log("Current user scores: " + currentUserScores);
 
-    // API POST Requests
-    // Below code handles when a user submits a form and thus submits data to the server.
-    // In each of the below cases, when a user submits form data (a JSON object)
-    // ...the JSON is pushed to the appropriate JavaScript array
-    // (ex. User fills out a reservation request... this data is then sent to the server...
-    // Then the server saves the data to the tableData array)
-    // ---------------------------------------------------------------------------
+        //compute user's most compatible friend
+        for (var i = 0; i < userData[i].length; i++) {
+            //convert user results into an array of numbers
+            var compareUserScores = userData[i].scores;
 
-    app.post("/api/tables", function (req, res) {
-        // Note the code here. Our "server" will respond to requests and let users know if they have a table or not.
-        // It will do this by sending out the value "true" have a table
-        // req.body is available since we're using the body-parser middleware
-        if (tableData.length < 5) {
-            tableData.push(req.body);
-            res.json(true);
-        } else {
-            waitListData.push(req.body);
-            res.json(false);
+            comparisonUserTotalScore = calculateUserCompatibility(currentUserScores, compareUserScores);
+
+            //build array of user compatibility scores.
+            friendsScores.push(comparisonUserTotalScore);
         }
+        console.log("Array of friend scores: " + friendScores);
+
+        var index = 0;
+        var value = friendScores[0];
+
+        // Need to get index of lowest score.
+        // Tried to use Math.min and it return NaN.
+        // So went with tried and true vanilla.
+        for (var i = 0; i < friendScores.length; i++) {
+            console.log("Value of item in array: " + friendScores[i]);
+            if (friendScores[i] < value) {
+                value = friendScores[i];
+                index = i;
+            }
+        }
+
+        // OMG we are getting a best friend.
+        console.log("Best friend name: " + userData[index].name);
+
+        // Send best friend as a response so we can display in modal.
+        res.send(userData[index]);
+
+        // Push new user to user array.
+        userData.push(req.body);
+
     });
+};
 
-    // ---------------------------------------------------------------------------
-    // I added this below code so you could clear out the table while working with the functionality.
-    // Don"t worry about it!
+var totalDifference = 0;
 
-    app.post("/api/clear", function () {
-        // Empty out the arrays of data
-        tableData = [];
-        waitListData = [];
+// Find total difference between current user and another user.
+function calculateUserCompatibilityScore(currentUserScores, comparisonUserScores) {
 
-        console.log(tableData);
-    });
+    // Reset the total difference counter each time function called.
+    totalDifference = 0;
+
+    for (var i = 0; i < currentUserScores.length; i++) {
+
+        totalDifference += Math.abs(currentUserScores[i] - comparisonUserScores[i]);
+    }
+
+    console.log("Final total difference for friend: " + totalDifference);
+
+    return totalDifference;
+
 };
